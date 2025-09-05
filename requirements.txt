@@ -1,0 +1,8 @@
+uvicorn[standard]
+motor
+pydantic-settings
+python-dotenv
+fastapi
+google-genai
+Pillow
+httpx

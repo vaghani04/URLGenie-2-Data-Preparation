@@ -1,0 +1,7 @@
+.venv
+.env
+.DS_Store
+boilerplate.py
+images/
+struct_logs/
+intermediate_outputs/
