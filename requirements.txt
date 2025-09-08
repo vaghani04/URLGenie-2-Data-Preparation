@@ -6,3 +6,4 @@ fastapi
 google-genai
 Pillow
 httpx
+pandas

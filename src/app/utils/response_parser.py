@@ -33,10 +33,7 @@ def parse_response(response) -> Any:
                 return response_data
             except json.JSONDecodeError as e2:
                 loggers["main"].error(
-                    "Failed to decode JSON with both methods:",
-                    e2,
-                    "response data:",
-                    json_str,
+                    f"Failed to decode JSON with both methods: {e2}. Response data: {json_str[:200]}..."
                 )
 
                 # Last resort: try to clean and repair the JSON manually
@@ -46,7 +43,7 @@ def parse_response(response) -> Any:
                     return response_data
                 except Exception as e3:
                     loggers["main"].error(
-                        "All JSON parsing attempts failed:", e3
+                        f"All JSON parsing attempts failed: {e3}"
                     )
                     # Return a partial parsed response with available fields
                     return extract_partial_json(json_str)
@@ -61,7 +58,7 @@ def parse_response(response) -> Any:
             try:
                 return extract_partial_json(response_str)
             except Exception as e:
-                loggers["main"].error("No valid JSON found in the response:", e)
+                loggers["main"].error(f"No valid JSON found in the response: {e}")
                 return None
 
 

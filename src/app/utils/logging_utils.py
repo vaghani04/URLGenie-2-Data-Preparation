@@ -61,4 +61,6 @@ def setup_logger(
 loggers = {
     "main": setup_logger("main", "main.log"),
     "requests": setup_logger("requests", "requests.log"),
+    "error": setup_logger("error", "error.log"),
+    "description": setup_logger("description", "description.log"),
 }
