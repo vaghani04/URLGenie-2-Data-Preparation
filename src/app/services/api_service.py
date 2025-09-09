@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 from typing import Tuple, Optional
 
 from src.app.repositories.error_repository import ErrorRepo
+from src.app.config.settings import settings
 
 
 class ApiService:
@@ -15,12 +16,14 @@ class ApiService:
             pool=10,    # Much shorter pool wait - fail fast instead of waiting
         )
         # Connection limits optimized for high-concurrency batch processing
+        # Scale with concurrent request limit for optimal performance
         self.limits = httpx.Limits(
-            max_connections=500,      # Increased for 1000+ concurrent requests
-            max_keepalive_connections=100,  # More keep-alive connections for efficiency
+            max_connections=settings.MAX_CONCURRENT_REQUESTS,
+            max_keepalive_connections=min(100, settings.MAX_CONCURRENT_REQUESTS // 5),
         )
         # Semaphore to control concurrency and prevent pool exhaustion
-        self.concurrency_limit = asyncio.Semaphore(200)  # Limit concurrent requests
+        # Configurable via settings for optimal performance tuning
+        self.concurrency_limit = asyncio.Semaphore(settings.MAX_CONCURRENT_REQUESTS)
         self.error_repo = error_repo
 
     def create_shared_client(self) -> httpx.AsyncClient:

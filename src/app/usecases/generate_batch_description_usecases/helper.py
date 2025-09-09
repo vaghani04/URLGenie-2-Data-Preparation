@@ -77,51 +77,41 @@ class Helper:
             }
 
     async def process_batch_parallel(self, batch_df: pd.DataFrame) -> List[Dict[str, Any]]:
-        """Process a batch of URLs in parallel using sub-batching and shared HTTP client connection pool."""
+        """Process a batch of URLs in parallel using shared HTTP client connection pool."""
         urls = batch_df['photo_image_url'].tolist()
         
-        # Create shared HTTP client with connection pooling to prevent resource exhaustion
+        # Create shared HTTP client with connection pooling for efficient concurrent processing
         shared_client = self.api_service.create_shared_client()
         
         try:
-            loggers["description"].info(f"Processing batch of {len(urls)} URLs with shared connection pool and sub-batching")
+            loggers["description"].info(f"Processing batch of {len(urls)} URLs concurrently with shared connection pool")
             
-            # Process URLs in smaller sub-batches to prevent overwhelming the connection pool
-            sub_batch_size = 100  # Process 100 URLs at a time
-            all_results = []
+            # Create tasks for all URLs - process them all concurrently
+            tasks = [self.process_single_url(url, shared_client) for url in urls]
             
-            for i in range(0, len(urls), sub_batch_size):
-                sub_batch_urls = urls[i:i + sub_batch_size]
-                loggers["description"].info(f"Processing sub-batch {i//sub_batch_size + 1}/{(len(urls)-1)//sub_batch_size + 1} with {len(sub_batch_urls)} URLs")
-                
-                # Create tasks for this sub-batch
-                tasks = [self.process_single_url(url, shared_client) for url in sub_batch_urls]
-                
-                # Execute sub-batch in parallel
-                sub_results = await asyncio.gather(*tasks, return_exceptions=True)
-                
-                # Process sub-batch results
-                for result in sub_results:
-                    if isinstance(result, Exception):
-                        all_results.append({
-                            "description": "",
-                            "keywords": [],
-                            "status": "error",
-                            "error": str(result)
-                        })
-                    else:
-                        all_results.append(result)
-                
-                # Small delay between sub-batches to allow connection pool to recover
-                if i + sub_batch_size < len(urls):
-                    await asyncio.sleep(0.1)
+            # Execute all tasks in parallel with connection pool management
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Handle any exceptions that occurred
+            processed_results = []
+            for result in results:
+                if isinstance(result, Exception):
+                    processed_results.append({
+                        "description": "",
+                        "keywords": [],
+                        "status": "error",
+                        "error": str(result)
+                    })
+                else:
+                    processed_results.append(result)
                     
-            return all_results
+            loggers["description"].info(f"Completed processing batch of {len(urls)} URLs")
+            return processed_results
             
         finally:
             # Always clean up the shared client
             await shared_client.aclose()
-            loggers["description"].info(f"Closed shared HTTP client after processing batch with sub-batching")
+            loggers["description"].info(f"Closed shared HTTP client after processing batch")
 
     def update_dataframe_with_results(self, batch_df: pd.DataFrame, results: List[Dict[str, Any]]) -> pd.DataFrame:
         """Update the batch DataFrame with description and keywords results."""

@@ -1,7 +1,6 @@
 from src.app.models.schemas.desc_gen_schemas import QueryRequest
 from PIL import Image
 from io import BytesIO
-from src.app.config.settings import settings
 from datetime import datetime
 from src.app.services.api_service import ApiService
 from fastapi import Depends
@@ -13,26 +12,6 @@ class Helper:
     def __init__(self, api_service: ApiService = Depends(ApiService)):
         self.api_service = api_service
     
-    def get_llm_usage(self, response):
-        token_usage = self.get_token_usage(response)
-        llm_usage = {
-            **token_usage,
-            "duration": 0,
-            "provider": "google",
-            "model": settings.GEMINI_MODEL,
-            "created_at": datetime.now().isoformat()
-        }
-        return llm_usage
-
-    def get_token_usage(self, response):
-        usage_metadata = response.usage_metadata
-        token_usage = {
-                "prompt_token_count": usage_metadata.prompt_token_count,
-                "candidates_token_count": usage_metadata.candidates_token_count,
-                "total_token_count": usage_metadata.total_token_count,
-                "cached_content_token_count": usage_metadata.cached_content_token_count,
-            }
-        return token_usage
     
     async def log_failed_url(self, url: str, error: str) -> None:
         """Log failed image URL to JSON file."""

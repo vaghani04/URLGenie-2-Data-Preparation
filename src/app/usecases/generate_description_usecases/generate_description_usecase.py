@@ -1,25 +1,22 @@
+from google.genai.types import FileData
 from src.app.prompts.generate_description_prompts import DESC_GEN_USER_PROMPT
-from google import genai
-from src.app.config.settings import settings
 from src.app.utils.response_parser import parse_response
 from src.app.services.api_service import ApiService
+from src.app.services.gemini_service import GeminiService
 from fastapi import Depends 
 from src.app.usecases.generate_description_usecases.helper import Helper
 from src.app.models.schemas.desc_gen_schemas import QueryRequest
-from src.app.repositories.llm_usage_repository import LLMUsageRepository
-import time
 import httpx
 
 class GenerateDescriptionUsecase:
     def __init__(self,
         api_service: ApiService = Depends(ApiService),
         helper: Helper = Depends(Helper),
-        llm_usage_repository: LLMUsageRepository = Depends(LLMUsageRepository)
+        gemini_service: GeminiService = Depends(GeminiService)
     ):
-        self.llm = genai.Client(api_key=settings.GEMINI_API_KEY)
         self.api_service = api_service
         self.helper = helper
-        self.llm_usage_repository = llm_usage_repository
+        self.gemini_service = gemini_service
 
     async def execute(self, request: QueryRequest, http_client: httpx.AsyncClient = None):
         result = await self.generate_description(request, http_client)
@@ -27,6 +24,7 @@ class GenerateDescriptionUsecase:
 
     async def generate_description(self, request: QueryRequest, http_client: httpx.AsyncClient = None):
         image = await self.helper.get_image(request, http_client)
+        image.save("images/image.png")
         
         # Handle case where image failed to load
         if image is None:
@@ -38,18 +36,34 @@ class GenerateDescriptionUsecase:
             }
         
         try:
-            start_time = time.time()
-            response = await self.llm.aio.models.generate_content(
-                model=settings.GEMINI_MODEL,
+            # Use the new GeminiService to generate content
+            result = await self.gemini_service.generate_content(
                 contents=[image, DESC_GEN_USER_PROMPT]
             )
-            end_time = time.time()
-            duration = end_time - start_time
-            llm_usage = self.helper.get_llm_usage(response)
-            llm_usage["duration"] = duration
+            # result = await self.gemini_service.generate_content_with_api(
+            #     contents=[image, DESC_GEN_USER_PROMPT]
+            # )
 
-            await self.llm_usage_repository.add_llm_usage(llm_usage)
-            generated_text = response.text
+            # result = await self.gemini_service.generate_content_with_api(
+            # result = await self.gemini_service.generate_content(
+            #     contents=[
+            #         {
+            #             "role": "user",
+            #             "parts": [
+            #                 {
+            #                     "text": DESC_GEN_USER_PROMPT,
+            #                 },
+            #                 {
+            #                     "fileData": {
+            #                         "mimeType": "image/jpeg",
+            #                         "fileUri": request.url
+            #                     }
+            #                 }
+            #             ]
+            #         }
+            #     ]
+            # )
+            generated_text = result["text"]
             
             # Parse response with error handling
             try:
