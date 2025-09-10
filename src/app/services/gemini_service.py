@@ -23,9 +23,11 @@ class GeminiService:
         self.llm_usage_repository = llm_usage_repository
         self.client = None
         self.model_name = settings.GEMINI_MODEL
-        self._initialize_client()
+        self.vertex_ai_enabled = settings.VERTEX_AI_ENABLED
+        if self.vertex_ai_enabled:
+            self._initialize_vertex_ai_client()
 
-    def _initialize_client(self):
+    def _initialize_vertex_ai_client(self):
         """Initialize the Vertex AI Gemini client."""
         try:
             # Parse service account JSON from settings
@@ -40,19 +42,6 @@ class GeminiService:
             # Refresh credentials to get access token
             from google.auth.transport.requests import Request
             credentials.refresh(Request())
-            
-            # Print access token for curl usage
-            print("=== Access Token for Curl ===")
-            print(f"Access Token: {credentials.token}")
-            print(f"Expires at: {credentials.expiry}")
-            print("============================")
-            
-            # Print example curl command
-            print("=== Example Curl Usage ===")
-            print(f'curl -H "Authorization: Bearer {credentials.token}" \\')
-            print(f'     -H "Content-Type: application/json" \\')
-            print(f'     https://your-vertex-ai-endpoint')
-            print("==========================")
             
             # Initialize the Google Gen AI client with Vertex AI
             self.client = genai.Client(
@@ -72,6 +61,15 @@ class GeminiService:
             error_msg = f"Failed to initialize Vertex AI Gemini client: {str(e)}"
             self._log_error(error_msg, "client_initialization", {"original_error": str(e)})
             raise RuntimeError(error_msg)
+    
+    def _get_client(self):
+        """Get the appropriate client based on VERTEX_AI_ENABLED setting."""
+        if self.vertex_ai_enabled:
+            if not self.client:
+                raise RuntimeError("Vertex AI client not initialized")
+            return self.client
+        else:
+            return genai.Client(api_key=settings.GEMINI_API_KEY)
 
     async def generate_content(
         self,
@@ -80,7 +78,7 @@ class GeminiService:
         temperature: Optional[float] = 0.2
     ) -> Dict[str, Any]:
         """
-        Generate content using Vertex AI Gemini.
+        Generate content using appropriate client (Vertex AI or Gemini API).
         
         Args:
             contents: The content to send to the model (text, image, or combination)
@@ -90,14 +88,13 @@ class GeminiService:
         Returns:
             Dictionary containing response text, token usage, and duration
         """
-        if not self.client:
-            raise RuntimeError("Gemini client not initialized")
-            
         try:
             start_time = time.time()
+            client = self._get_client()
+            provider = "google_vertex_ai" if self.vertex_ai_enabled else "google_gemini_api"
             
-            # Generate content using the Vertex AI client
-            response = await self.client.aio.models.generate_content(
+            # Generate content using the appropriate client
+            response = await client.aio.models.generate_content(
                 model=self.model_name,
                 contents=contents,
                 config=GenerateContentConfig(
@@ -114,7 +111,7 @@ class GeminiService:
             
             # Extract token usage and create LLM usage record
             token_usage = self._extract_token_usage(response)
-            llm_usage = self._create_llm_usage_record(token_usage, duration, provider="google_vertex_ai")
+            llm_usage = self._create_llm_usage_record(token_usage, duration, provider=provider)
             
             # Log usage to repository
             await self.llm_usage_repository.add_llm_usage(llm_usage)
@@ -127,11 +124,13 @@ class GeminiService:
             }
             
         except Exception as e:
-            error_msg = f"Error generating content with Vertex AI Gemini: {str(e)}"
+            provider = "google_vertex_ai" if self.vertex_ai_enabled else "google_gemini_api"
+            error_msg = f"Error generating content with {provider}: {str(e)}"
             await self._log_error(error_msg, "generate_content", {
                 "model": self.model_name,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
+                "provider": provider,
                 "original_error": str(e)
             })
             raise

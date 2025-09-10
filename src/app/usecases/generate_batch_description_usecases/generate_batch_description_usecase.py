@@ -81,7 +81,7 @@ class GenerateBatchDescriptionUsecase:
             
             # Create temporary file in intermediate_outputs directory
             os.makedirs("intermediate_outputs", exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime("%d_%m_%H_%M")
             temp_file_name = f"temp_{tsv_file.stem}_{timestamp}.tsv"
             temp_file_path = os.path.join("intermediate_outputs", temp_file_name)
             

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from src.app.config.database import mongodb_database
 from src.app.routes.generate_description_route import router as generate_description_router
 from src.app.routes.generate_batch_description_route import router as generate_batch_description_router
+from src.app.routes.prepare_jsonal_route import router as prepare_jsonal_router
 import os
 
 os.makedirs("intermediate_outputs", exist_ok=True)
@@ -25,6 +26,7 @@ app = FastAPI(
 
 app.include_router(generate_description_router, prefix="/api/v1", tags=["generate-description"])
 app.include_router(generate_batch_description_router, prefix="/api/v1", tags=["generate-batch-description"])
+app.include_router(prepare_jsonal_router, prefix="/api/v1", tags=["prepare-jsonal"])
 
 @app.get("/health")
 async def health_check():

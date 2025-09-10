@@ -20,7 +20,15 @@ class Settings(BaseSettings):
     # Batch processing settings
     BATCH_SIZE: int = 500
     MAX_CONCURRENT_REQUESTS: int = 500  # Maximum concurrent HTTP requests
-    OUTPUT_DIRECTORY_PATH: str = "/Users/maunikvaghani/Developer/DhiWise/URLGenie/data/Unsplash_full_dataset/URLGenie_2/final_data"
+    OUTPUT_DIRECTORY_PATH: str = "/Users/maunikvaghani/Developer/DhiWise/URLGenie/data/Unsplash_full_dataset/URLGenie_2/final_data/"
+    
+    # Batch API settings
+    # BATCH_SIZE_FOR_BATCH_API: int = 200  # Batch size for Gemini Batch API processing
+    VERTEX_AI_ENABLED: bool = False  # Use Vertex AI if True, Gemini API if False
+
+    # JSONAL settings
+    JSONAL_OUTPUT_DIRECOTRY_PATH: str = "/Users/maunikvaghani/Developer/DhiWise/URLGenie/data/Unsplash_full_dataset/URLGenie_2/final_data/jsonal_files/photos_1_50"
+    JSONL_BATCH_SIZE: int = 700  # Batch size for JSONL files creation (200-800 range)
 
     class Config:
         env_file = ".env"

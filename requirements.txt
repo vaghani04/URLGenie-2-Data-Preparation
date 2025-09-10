@@ -7,3 +7,4 @@ google-genai
 Pillow
 httpx
 pandas
+google-cloud-storage
